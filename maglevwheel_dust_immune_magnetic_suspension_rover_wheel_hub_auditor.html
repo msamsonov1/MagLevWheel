@@ -1,0 +1,1717 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MagLevWheel: Dust-Immune Magnetic Suspension Rover Wheel Hub Auditor</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  
+  <!-- MathJax v3 Bulletproof Configuration -->
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['$', '$'], ['\\(', '\\)']],
+        displayMath: [['$$', '$$'], ['\\[', '\\]']]
+      },
+      svg: { fontCache: 'global' }
+    };
+  </script>
+  <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
+    
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #05070d;
+      color: #e2e8f0;
+      overflow-x: hidden;
+    }
+
+    .font-mono-code {
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .formula-box {
+      background-color: #030712;
+      border: 1px solid #1f2937;
+      border-radius: 0.5rem;
+      padding: 0.75rem 1rem;
+      color: #67e8f9;
+      font-size: 0.95rem;
+      overflow-x: auto;
+      margin: 0.65rem 0;
+      box-shadow: inset 0 1px 2px rgba(0,0,0,0.5);
+    }
+
+    /* Custom scrollbars */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #080c14;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #1e293b;
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #334155;
+    }
+
+    .hud-card {
+      background: rgba(13, 19, 33, 0.75);
+      border: 1px solid rgba(30, 41, 59, 0.8);
+      backdrop-filter: blur(12px);
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between selection:bg-cyan-500 selection:text-black">
+
+  <!-- TOP APP HEADER -->
+  <header class="border-b border-gray-800 bg-[#070b14]/90 sticky top-0 z-50 backdrop-blur-md">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-wrap items-center justify-between gap-4">
+      <div class="flex items-center space-x-3">
+        <div class="p-2 rounded-lg bg-cyan-950/80 border border-cyan-500/40 text-cyan-400">
+          <i data-lucide="disc-3" class="w-6 h-6 animate-spin" style="animation-duration: 8s;"></i>
+        </div>
+        <div>
+          <div class="flex items-center space-x-2">
+            <span class="text-xs uppercase tracking-wider font-mono-code text-cyan-400 font-bold px-2 py-0.5 rounded bg-cyan-950 border border-cyan-800/80">NASA SBIR/STTR DTT-26</span>
+            <span class="text-xs text-gray-400">TRL-4 Lab Demonstration</span>
+          </div>
+          <h1 class="text-lg font-bold text-white tracking-tight flex items-center gap-2">
+            MagLevWheel <span class="text-xs font-normal text-gray-400 hidden sm:inline">| Dust-Immune Magnetic Suspension Hub Auditor</span>
+          </h1>
+        </div>
+      </div>
+
+      <!-- Navigation Tabs -->
+      <nav class="flex items-center space-x-1 sm:space-x-2 bg-gray-950/90 p-1 rounded-xl border border-gray-800">
+        <button id="tabBtnSim" onclick="switchTab('sim')" class="flex items-center space-x-2 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all text-white bg-cyan-600/30 border border-cyan-500/50 shadow-sm shadow-cyan-500/20">
+          <i data-lucide="activity" class="w-4 h-4 text-cyan-400"></i>
+          <span>Live Telemetry</span>
+        </button>
+        <button id="tabBtnPhysics" onclick="switchTab('physics')" class="flex items-center space-x-2 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all text-gray-400 hover:text-white hover:bg-gray-900 border border-transparent">
+          <i data-lucide="atom" class="w-4 h-4 text-purple-400"></i>
+          <span>Physics & Dynamics</span>
+        </button>
+        <button id="tabBtnProposal" onclick="switchTab('proposal')" class="flex items-center space-x-2 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all text-gray-400 hover:text-white hover:bg-gray-900 border border-transparent">
+          <i data-lucide="file-check-2" class="w-4 h-4 text-amber-400"></i>
+          <span>NASA Proposal</span>
+        </button>
+        <button id="tabBtnARR" onclick="switchTab('arr')" class="flex items-center space-x-2 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all text-gray-400 hover:text-white hover:bg-gray-900 border border-transparent">
+          <i data-lucide="trending-up" class="w-4 h-4 text-emerald-400"></i>
+          <span>Commercial ARR</span>
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <!-- MAIN VIEWPORT CONTAINER -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 w-full flex-grow">
+
+    <!-- ========================================================================= -->
+    <!-- TAB 1: LIVE SIMULATION & TELEMETRY HUD -->
+    <!-- ========================================================================= -->
+    <section id="viewSim" class="space-y-6">
+      
+      <!-- Top Alert Bar / Status Banner -->
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div class="hud-card p-4 rounded-xl border border-gray-800 flex items-center justify-between">
+          <div>
+            <div class="text-xs text-gray-400 font-mono-code uppercase">Wheel Speed ($v$)</div>
+            <div id="metricRpm" class="text-2xl font-bold font-mono-code text-white mt-1">420.0 <span class="text-xs text-gray-400">RPM</span></div>
+            <div class="text-[11px] text-gray-400 mt-0.5">Linear: <span id="metricLinearVel">4.40</span> m/s</div>
+          </div>
+          <div class="p-3 bg-cyan-950/60 rounded-lg text-cyan-400 border border-cyan-800/40">
+            <i data-lucide="gauge" class="w-5 h-5"></i>
+          </div>
+        </div>
+
+        <div class="hud-card p-4 rounded-xl border border-gray-800 flex items-center justify-between">
+          <div>
+            <div class="text-xs text-gray-400 font-mono-code uppercase">Phase Angle ($\theta$)</div>
+            <div id="metricPhase" class="text-2xl font-bold font-mono-code text-cyan-300 mt-1">-32.4<span class="text-xs">°</span></div>
+            <div class="text-[11px] text-gray-400 mt-0.5">Nominal: -25.0° to -55.0°</div>
+          </div>
+          <div class="p-3 bg-indigo-950/60 rounded-lg text-indigo-400 border border-indigo-800/40">
+            <i data-lucide="compass" class="w-5 h-5"></i>
+          </div>
+        </div>
+
+        <div class="hud-card p-4 rounded-xl border border-gray-800 flex items-center justify-between">
+          <div>
+            <div class="text-xs text-gray-400 font-mono-code uppercase">Air-Gap Levitation ($\delta_0$)</div>
+            <div id="metricGap" class="text-2xl font-bold font-mono-code text-emerald-400 mt-1">1.22 <span class="text-xs">mm</span></div>
+            <div class="text-[11px] text-gray-400 mt-0.5">Baseline: 1.25 mm (&plusmn;0.35)</div>
+          </div>
+          <div class="p-3 bg-emerald-950/60 rounded-lg text-emerald-400 border border-emerald-800/40">
+            <i data-lucide="move-vertical" class="w-5 h-5"></i>
+          </div>
+        </div>
+
+        <div class="hud-card p-4 rounded-xl border border-gray-800 flex items-center justify-between">
+          <div>
+            <div class="text-xs text-gray-400 font-mono-code uppercase">AMB Levitation State</div>
+            <div id="statusBadge" class="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-md text-xs font-bold font-mono-code mt-1.5 bg-emerald-950 text-emerald-400 border border-emerald-700/60 shadow-sm">
+              <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+              <span>STABLE LEVITATION</span>
+            </div>
+            <div id="dampingMarginText" class="text-[11px] text-gray-400 mt-1">Damping Margin: <span class="text-emerald-400 font-mono-code">24.2 dB</span></div>
+          </div>
+          <div class="p-3 bg-gray-900 rounded-lg text-gray-400 border border-gray-800">
+            <i data-lucide="shield-check" class="w-5 h-5"></i>
+          </div>
+        </div>
+      </div>
+
+      <!-- Main Visualizer Grid (Canvas + Phase Plane Chart) -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- Left 7 cols: Interactive AMB Cross Section Canvas -->
+        <div class="lg:col-span-7 hud-card p-5 rounded-2xl border border-gray-800 flex flex-col justify-between">
+          <div class="flex items-center justify-between pb-3 border-b border-gray-800/80 mb-3">
+            <div class="flex items-center space-x-2">
+              <div class="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-ping"></div>
+              <h2 class="text-sm font-semibold text-white tracking-wide">AMB Hub Dynamic Rotor-Stator Gap & Regolith Contamination Cross-Section</h2>
+            </div>
+            <span class="text-xs font-mono-code text-cyan-400 bg-cyan-950/60 px-2 py-0.5 rounded border border-cyan-800/60">Non-Contact 4-Pole Stator</span>
+          </div>
+
+          <!-- HTML5 Canvas -->
+          <div class="relative w-full h-[340px] bg-[#03050a] rounded-xl overflow-hidden border border-gray-900 shadow-inner">
+            <canvas id="hubCanvas" class="w-full h-full block"></canvas>
+            
+            <!-- Canvas HUD Overlay Badges -->
+            <div class="absolute top-3 left-3 bg-black/70 backdrop-blur-md px-3 py-1.5 rounded-lg border border-gray-800 text-[11px] font-mono-code space-y-0.5">
+              <div class="text-gray-400">Actuator Force: <span id="hudForce" class="text-cyan-400 font-bold">142.8 N</span></div>
+              <div class="text-gray-400">Dust Density: <span id="hudDust" class="text-amber-400 font-bold">Low (12 mg/cm³)</span></div>
+            </div>
+
+            <div class="absolute bottom-3 right-3 bg-black/70 backdrop-blur-md px-3 py-1.5 rounded-lg border border-gray-800 text-[11px] font-mono-code">
+              <span class="text-gray-400">Adaptive Filter:</span>
+              <span id="hudAdaptiveState" class="text-emerald-400 font-bold ml-1">ENABLED</span>
+            </div>
+          </div>
+
+          <!-- Quick Canvas Legend -->
+          <div class="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px] font-mono-code text-gray-400 pt-2 border-t border-gray-800/60">
+            <div class="flex items-center space-x-1.5">
+              <span class="w-3 h-3 rounded-full bg-cyan-500 inline-block"></span>
+              <span>Stator AMB Poles</span>
+            </div>
+            <div class="flex items-center space-x-1.5">
+              <span class="w-3 h-3 rounded-full bg-purple-500 inline-block"></span>
+              <span>Levitated Rotor</span>
+            </div>
+            <div class="flex items-center space-x-1.5">
+              <span class="w-3 h-3 rounded-full bg-amber-400 inline-block"></span>
+              <span>Lunar Regolith Flux</span>
+            </div>
+            <div class="flex items-center space-x-1.5">
+              <span class="w-3 h-3 rounded-full bg-rose-500 inline-block"></span>
+              <span>Eccentricity Shift</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right 5 cols: Phase-Space Nyquist-Style Stability Map (v vs theta) -->
+        <div class="lg:col-span-5 hud-card p-5 rounded-2xl border border-gray-800 flex flex-col justify-between">
+          <div class="flex items-center justify-between pb-3 border-b border-gray-800/80 mb-3">
+            <div>
+              <h2 class="text-sm font-semibold text-white tracking-wide">Phase-Space Stability Corridor</h2>
+              <p class="text-[11px] text-gray-400">Velocity $v$ (RPM) vs. Actuator Phase Angle $\theta$ (deg)</p>
+            </div>
+            <span class="text-xs font-mono-code text-purple-400 bg-purple-950/60 px-2 py-0.5 rounded border border-purple-800/60">Nyquist Margin</span>
+          </div>
+
+          <div class="relative w-full h-[320px]">
+            <canvas id="phaseSpaceChart"></canvas>
+          </div>
+
+          <div class="mt-2 text-[11px] text-gray-400 bg-gray-950/80 p-2.5 rounded-lg border border-gray-800">
+            <span class="text-cyan-400 font-semibold">Stability Boundary:</span> If $(v, \theta)$ crosses the dashed red curve, gyroscopic cross-coupling and particulate drag exceed phase margin ($\le 12^\circ$), triggering resonant wheel wobble or touchdown.
+          </div>
+        </div>
+      </div>
+
+      <!-- Controls & Secondary Telemetry Row -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- Interactive Control Console (5 cols) -->
+        <div class="lg:col-span-5 hud-card p-5 rounded-2xl border border-gray-800 space-y-4">
+          <div class="flex items-center justify-between pb-2 border-b border-gray-800">
+            <h3 class="text-sm font-bold text-white flex items-center space-x-2">
+              <i data-lucide="sliders" class="w-4 h-4 text-cyan-400"></i>
+              <span>Closed-Loop AMB Controller & Regolith Injection</span>
+            </h3>
+            <span class="text-[10px] uppercase font-mono-code text-gray-400">Real-Time DSP</span>
+          </div>
+
+          <!-- Slider 1: Wheel Velocity -->
+          <div class="space-y-1.5">
+            <div class="flex justify-between text-xs">
+              <label for="sliderRpm" class="text-gray-300 font-medium">Wheel Rotational Speed ($v$):</label>
+              <span id="sliderRpmVal" class="text-cyan-400 font-mono-code font-bold">420 RPM</span>
+            </div>
+            <input id="sliderRpm" type="range" min="0" max="1200" step="10" value="420"
+              class="w-full h-2 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-cyan-500">
+            <div class="flex justify-between text-[10px] text-gray-400 font-mono-code">
+              <span>0 RPM (Static)</span>
+              <span>600 RPM (Cruise)</span>
+              <span>1200 RPM (Sprint)</span>
+            </div>
+          </div>
+
+          <!-- Slider 2: Seal Degradation / Dust Contamination -->
+          <div class="space-y-1.5">
+            <div class="flex justify-between text-xs">
+              <label for="sliderDust" class="text-gray-300 font-medium">Labyrinth Seal Leak & Regolith Ingress ($C_d$):</label>
+              <span id="sliderDustVal" class="text-amber-400 font-mono-code font-bold">18 %</span>
+            </div>
+            <input id="sliderDust" type="range" min="0" max="100" step="1" value="18"
+              class="w-full h-2 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-amber-500">
+            <div class="flex justify-between text-[10px] text-gray-400 font-mono-code">
+              <span>0% (Hermetic Seal)</span>
+              <span>50% (Seal Breach)</span>
+              <span>100% (High Abrasive Shear)</span>
+            </div>
+          </div>
+
+          <!-- Slider 3: Adaptive Phase Lead Gain -->
+          <div class="space-y-1.5">
+            <div class="flex justify-between text-xs">
+              <label for="sliderGain" class="text-gray-300 font-medium">Adaptive Lead-Lag Damping Gain ($K_\theta$):</label>
+              <span id="sliderGainVal" class="text-purple-400 font-mono-code font-bold">1.45</span>
+            </div>
+            <input id="sliderGain" type="range" min="0.2" max="3.0" step="0.05" value="1.45"
+              class="w-full h-2 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-purple-500">
+            <div class="flex justify-between text-[10px] text-gray-400 font-mono-code">
+              <span>0.2 (Underdamped)</span>
+              <span>1.5 (Optimal)</span>
+              <span>3.0 (High Gain / Noise Sens.)</span>
+            </div>
+          </div>
+
+          <!-- Fault Injection & Automated Observer Mode Buttons -->
+          <div class="pt-2 grid grid-cols-2 gap-3">
+            <button id="btnFaultInject" onclick="toggleMassUnbalance()" class="px-3 py-2.5 rounded-xl border border-rose-600/60 bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 text-xs font-semibold flex items-center justify-center space-x-1.5 transition-all">
+              <i data-lucide="zap-off" class="w-4 h-4"></i>
+              <span id="btnFaultText">Inject Regolith Shock</span>
+            </button>
+
+            <button id="btnAutoRecover" onclick="toggleAutoObserver()" class="px-3 py-2.5 rounded-xl border border-cyan-500/70 bg-cyan-950/50 hover:bg-cyan-900/60 text-cyan-300 text-xs font-semibold flex items-center justify-center space-x-1.5 transition-all">
+              <i data-lucide="cpu" class="w-4 h-4"></i>
+              <span id="btnObserverText">Auto $\mathcal{H}_\infty$ Observer: ON</span>
+            </button>
+          </div>
+
+          <!-- Live Diagnostic State Output -->
+          <div class="bg-gray-950 p-3 rounded-xl border border-gray-800 font-mono-code text-xs space-y-1">
+            <div class="text-gray-400">State Observer Estimator:</div>
+            <div class="flex justify-between text-gray-300">
+              <span>Gyroscopic Cross-Coupling ($G\Omega$):</span>
+              <span id="telemetryGyro" class="text-cyan-400">18.4 rad/s²</span>
+            </div>
+            <div class="flex justify-between text-gray-300">
+              <span>Particulate Viscous Drag ($\mu_p$):</span>
+              <span id="telemetryDrag" class="text-amber-400">0.038 N·s/m</span>
+            </div>
+            <div class="flex justify-between text-gray-300">
+              <span>Phase Margin Safety ($\Phi_m$):</span>
+              <span id="telemetryMargin" class="text-emerald-400">+28.6° (SAFE)</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Telemetry Strip Charts (7 cols) -->
+        <div class="lg:col-span-7 grid grid-cols-1 md:grid-cols-2 gap-4">
+          
+          <!-- Chart 1: Air-Gap Deviation (mm) vs Time -->
+          <div class="hud-card p-4 rounded-2xl border border-gray-800 flex flex-col justify-between">
+            <div class="flex items-center justify-between pb-2 border-b border-gray-800/80">
+              <div>
+                <h4 class="text-xs font-semibold text-white">Rotor Radial Eccentricity</h4>
+                <p class="text-[10px] text-gray-400">Dynamic Air-Gap Offset $\Delta r(t)$ (mm)</p>
+              </div>
+              <span class="text-[10px] font-mono-code text-cyan-400 bg-cyan-950 px-1.5 py-0.5 rounded border border-cyan-800">$\pm 0.35$ limit</span>
+            </div>
+            <div class="relative w-full h-[180px] mt-2">
+              <canvas id="gapHistoryChart"></canvas>
+            </div>
+          </div>
+
+          <!-- Chart 2: Actuator Control Current (Amperes) vs Time -->
+          <div class="hud-card p-4 rounded-2xl border border-gray-800 flex flex-col justify-between">
+            <div class="flex items-center justify-between pb-2 border-b border-gray-800/80">
+              <div>
+                <h4 class="text-xs font-semibold text-white">Electromagnet Control Currents</h4>
+                <p class="text-[10px] text-gray-400">Active Suspension Coil Current $i_x, i_y$ (A)</p>
+              </div>
+              <span class="text-[10px] font-mono-code text-purple-400 bg-purple-950 px-1.5 py-0.5 rounded border border-purple-800">4.8A Saturation</span>
+            </div>
+            <div class="relative w-full h-[180px] mt-2">
+              <canvas id="currentHistoryChart"></canvas>
+            </div>
+          </div>
+
+          <!-- Bottom Summary Banner inside HUD -->
+          <div class="md:col-span-2 bg-gradient-to-r from-cyan-950/40 via-purple-950/30 to-gray-950/60 p-3.5 rounded-xl border border-cyan-900/40 text-xs text-gray-300 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+              <div class="p-2 rounded-lg bg-cyan-500/20 text-cyan-400 border border-cyan-500/30">
+                <i data-lucide="check-circle" class="w-4 h-4"></i>
+              </div>
+              <div>
+                <span class="font-semibold text-white">Auditor Status:</span> Active magnetic suspension dynamically levitates rover wheel hub without mechanical roller contact, preventing abrasive grinding from sub-micron lunar dust grains.
+              </div>
+            </div>
+            <button onclick="resetSimulationParameters()" class="px-2.5 py-1 text-[11px] rounded bg-gray-800 hover:bg-gray-700 text-gray-200 border border-gray-700">Reset</button>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ========================================================================= -->
+    <!-- TAB 2: CORE PHYSICS & MATHEMATICAL MODEL -->
+    <!-- ========================================================================= -->
+    <section id="viewPhysics" class="hidden space-y-6">
+      
+      <!-- Section Header -->
+      <div class="hud-card p-6 rounded-2xl border border-gray-800">
+        <div class="flex items-center space-x-3 mb-2">
+          <div class="p-2.5 bg-purple-950/60 border border-purple-600/40 rounded-xl text-purple-400">
+            <i data-lucide="atom" class="w-6 h-6"></i>
+          </div>
+          <div>
+            <h2 class="text-xl font-bold text-white tracking-tight">Active Magnetic Levitation Under Lunar Regolith Contamination</h2>
+            <p class="text-sm text-gray-400">Rigorous rotor-dynamic equations, gyroscopic cross-coupling, particulate squeeze-film drag, and adaptive observer synthesis.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 4 Core Theory Cards -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+        <!-- Card 1: Rotor-Dynamics & Gyroscopic Cross-Coupling -->
+        <div class="hud-card p-5 rounded-2xl border border-gray-800 space-y-3">
+          <div class="flex items-center justify-between border-b border-gray-800 pb-2">
+            <h3 class="text-base font-bold text-cyan-300 flex items-center gap-2">
+              <i data-lucide="orbit" class="w-4 h-4 text-cyan-400"></i>
+              1. 4-DOF AMB Rotor Equations & Gyroscopic Moments
+            </h3>
+            <span class="text-xs font-mono-code text-cyan-400 bg-cyan-950/60 px-2 py-0.5 rounded border border-cyan-800">Rotor Dynamics</span>
+          </div>
+
+          <p class="text-xs text-gray-300 leading-relaxed">
+            The rover wheel hub rotor of mass $m$, transverse moment of inertia $I_t$, and polar moment of inertia $I_p$ operates under active electromagnetic levitation. As rotational velocity $\Omega = \frac{v}{R}$ scales, gyroscopic coupling links orthogonal axes $(x, \beta)$ and $(y, -\alpha)$:
+          </p>
+
+          <div class="formula-box">
+            $$m \ddot{x} + k_s x = k_i i_x + F_{\text{unbalance}}(t) + F_{\text{dust},x}$$
+          </div>
+          <div class="formula-box">
+            $$I_t \ddot{\alpha} + I_p \Omega \dot{\beta} - k_{\theta} \alpha = -T_{\text{coil},\alpha} + M_{\text{shear}}$$
+          </div>
+
+          <p class="text-xs text-gray-400">
+            Where $k_s = \frac{2 \mu_0 A N^2 I_0^2}{s_0^3}$ represents open-loop negative magnetic stiffness, $k_i = \frac{2 \mu_0 A N^2 I_0}{s_0^2}$ is current sensitivity, and $I_p \Omega \dot{\beta}$ is the destabilizing gyroscopic cross-coupling moment.
+          </p>
+        </div>
+
+        <!-- Card 2: Lunar Dust Particulate Drag Perturbations -->
+        <div class="hud-card p-5 rounded-2xl border border-gray-800 space-y-3">
+          <div class="flex items-center justify-between border-b border-gray-800 pb-2">
+            <h3 class="text-base font-bold text-amber-300 flex items-center gap-2">
+              <i data-lucide="cloud-fog" class="w-4 h-4 text-amber-400"></i>
+              2. Squeeze-Film Particulate Shear & Phase Lag
+            </h3>
+            <span class="text-xs font-mono-code text-amber-400 bg-amber-950/60 px-2 py-0.5 rounded border border-amber-800">Tribology & Drag</span>
+          </div>
+
+          <p class="text-xs text-gray-300 leading-relaxed">
+            When fine lunar regolith grains (mean diameter $d_p \approx 0.5 - 20\,\mu\text{m}$) breach degraded labyrinth seals, they enter the $s_0 = 1.25\,\text{mm}$ magnetic air-gap. The particle concentration $\phi$ induces non-Newtonian granular shear and electrostatic damping:
+          </p>
+
+          <div class="formula-box">
+            $$F_{\text{dust}}(t) = - c_p(\phi) \dot{x} - k_p(\phi) x - \mu_{\text{coulomb}} N_{\text{contact}} \text{sgn}(\dot{x})$$
+          </div>
+          <div class="formula-box">
+            $$\Delta \theta(v, \phi) = \arctan\left(\frac{\omega c_p(\phi) + I_p \Omega / I_t}{k_s - m \omega^2}\right)$$
+          </div>
+
+          <p class="text-xs text-gray-400">
+            Particulate accumulation causes the phase angle $\theta$ between the inductive proximity displacement sensor and coil current to lag significantly toward $-90^\circ$, eroding closed-loop damping margins.
+          </p>
+        </div>
+
+        <!-- Card 3: Diagnostic State Observer & Stability Boundary -->
+        <div class="hud-card p-5 rounded-2xl border border-gray-800 space-y-3">
+          <div class="flex items-center justify-between border-b border-gray-800 pb-2">
+            <h3 class="text-base font-bold text-purple-300 flex items-center gap-2">
+              <i data-lucide="cpu" class="w-4 h-4 text-purple-400"></i>
+              3. Dynamic Nyquist Phase-Space Mapping $(v, \theta)$
+            </h3>
+            <span class="text-xs font-mono-code text-purple-400 bg-purple-950/60 px-2 py-0.5 rounded border border-purple-800">Observer Inversion</span>
+          </div>
+
+          <p class="text-xs text-gray-300 leading-relaxed">
+            The software continuous auditor computes the open-loop transfer function matrix $\mathbf{G}(s)\mathbf{K}(s)$. The safe operating envelope in the $(v, \theta)$ coordinate space is defined by Cauchy's argument principle:
+          </p>
+
+          <div class="formula-box">
+            $$\text{Margin}_{\text{Phase}} = 180^\circ + \arg\left[\det\left(\mathbf{I} + \mathbf{G}(j\omega_c)\mathbf{K}(j\omega_c)\right)\right] \ge 30^\circ$$
+          </div>
+          <div class="formula-box">
+            $$\theta_{\text{boundary}}(v) = -\left[20^\circ + 0.045 \cdot v + 0.000085 \cdot v^2 + 0.4 \cdot C_d\right]$$
+          </div>
+
+          <p class="text-xs text-gray-400">
+            When operating points cross into the red hazard corridor, active damping $\zeta < 0.05$, causing unconstrained rotor orbital whirl, stator touchdown, and catastrophic wheel lockup.
+          </p>
+        </div>
+
+        <!-- Card 4: Adaptive H-infinity Filter Matrix Reconfiguration -->
+        <div class="hud-card p-5 rounded-2xl border border-gray-800 space-y-3">
+          <div class="flex items-center justify-between border-b border-gray-800 pb-2">
+            <h3 class="text-base font-bold text-emerald-300 flex items-center gap-2">
+              <i data-lucide="sliders" class="w-4 h-4 text-emerald-400"></i>
+              4. Adaptive Pole-Placement & Real-Time Remediation
+            </h3>
+            <span class="text-xs font-mono-code text-emerald-400 bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-800">Remediation DSP</span>
+          </div>
+
+          <p class="text-xs text-gray-300 leading-relaxed">
+            Upon detecting particulate-induced phase erosion $\Delta \theta$, the digital signal processor executes real-time updates on the dual-channel state-feedback gain matrix $\mathbf{K}$:
+          </p>
+
+          <div class="formula-box">
+            $$\mathbf{u}(t) = -\mathbf{K}(\phi, \Omega)\mathbf{\hat{x}}(t) - \mathbf{K}_{\text{cross}}(\Omega)\begin{bmatrix} 0 & 1 \\ -1 & 0 \end{bmatrix} \mathbf{\dot{x}}(t)$$
+          </div>
+          <div class="formula-box">
+            $$\mathbf{K}_{\text{lead}}(s) = K_0 \left(\frac{1 + \alpha_1 \tau s}{1 + \tau s}\right) \cdot \exp\left(j \cdot \Delta \theta_{\text{compensation}}\right)$$
+          </div>
+
+          <p class="text-xs text-gray-400">
+            This instantly shifts closed-loop system poles into the stable left half-plane ($s$-plane), recovering $>25\,\text{dB}$ damping margin and sustaining 100% non-contact levitation even under heavy regolith clogging.
+          </p>
+        </div>
+
+      </div>
+
+      <!-- Micro-Fabrication & Hardware Specs Table -->
+      <div class="hud-card p-5 rounded-2xl border border-gray-800">
+        <h3 class="text-sm font-bold text-white mb-3 flex items-center space-x-2">
+          <i data-lucide="layers" class="w-4 h-4 text-cyan-400"></i>
+          <span>Flight Subsystem & Magnetic Bearing Physical Specifications</span>
+        </h3>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs font-mono-code border-collapse">
+            <thead>
+              <tr class="border-b border-gray-800 text-gray-400 bg-gray-950/60">
+                <th class="p-3">Subsystem / Element</th>
+                <th class="p-3">Design Specification</th>
+                <th class="p-3">Operating Limits</th>
+                <th class="p-3">Flight Heritage / Material</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-800/60 text-gray-300">
+              <tr>
+                <td class="p-3 text-white font-semibold">AMB Actuator Stator Core</td>
+                <td class="p-3">8-Pole Heteropolar Radial / Laminated Hiperco 50</td>
+                <td class="p-3 text-cyan-400">Max flux density $B_{\text{sat}} = 2.2\,\text{T}$</td>
+                <td class="p-3">Cobalt-Iron alloy with $0.15\,\text{mm}$ lamella</td>
+              </tr>
+              <tr>
+                <td class="p-3 text-white font-semibold">Nominal Magnetic Air-Gap ($s_0$)</td>
+                <td class="p-3">1.250 mm (&plusmn;0.35 mm orbital travel)</td>
+                <td class="p-3 text-cyan-400">Touchdown clearance: $0.45\,\text{mm}$</td>
+                <td class="p-3">Active closed-loop regulated</td>
+              </tr>
+              <tr>
+                <td class="p-3 text-white font-semibold">Auxiliary Backup Touchdown Bearing</td>
+                <td class="p-3">Silicon Nitride ($\text{Si}_3\text{N}_4$) hybrid ceramic balls</td>
+                <td class="p-3 text-amber-400">Intermittent dry friction ($100\,\text{hr}$)</td>
+                <td class="p-3">Diamond-like Carbon (DLC) dry lubricant coating</td>
+              </tr>
+              <tr>
+                <td class="p-3 text-white font-semibold">Rotor Displacement Sensors</td>
+                <td class="p-3">Differential eddy-current proximity probes (4-ch)</td>
+                <td class="p-3 text-emerald-400">Resolution $< 0.15\,\mu\text{m}$, 25 kHz BW</td>
+                <td class="p-3">Rad-hardened Invar coil housings</td>
+              </tr>
+              <tr>
+                <td class="p-3 text-white font-semibold">Environmental Protection</td>
+                <td class="p-3">Non-contact multi-stage ferrofluidic & labyrinth seal</td>
+                <td class="p-3 text-purple-400">Lunar vacuum $10^{-9}\,\text{torr}$, 40K–390K</td>
+                <td class="p-3">Fluorosilicone magnetizable carrier fluids</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================================= -->
+    <!-- TAB 3: NASA SBIR/STTR PROPOSAL & HARDWARE TRANSITION -->
+    <!-- ========================================================================= -->
+    <section id="viewProposal" class="hidden space-y-6">
+      
+      <!-- Proposal Header Banner -->
+      <div class="hud-card p-6 rounded-2xl border border-gray-800 bg-gradient-to-r from-gray-950 via-cyan-950/20 to-gray-950">
+        <div class="flex flex-wrap items-center justify-between gap-4">
+          <div class="space-y-1">
+            <div class="flex items-center space-x-2">
+              <span class="px-2.5 py-0.5 rounded text-xs font-mono-code font-bold bg-amber-950 text-amber-300 border border-amber-700">NASA STTR Phase I Solicitation</span>
+              <span class="text-xs text-gray-400">Topic Code: T8.04-2026</span>
+            </div>
+            <h2 class="text-2xl font-bold text-white tracking-tight">Dust-Tolerant Lunar Mechanisms & Non-Contact AMB Drivetrains</h2>
+            <p class="text-sm text-gray-400 max-w-3xl">Autonomous In-Situ Vibration Phase-Shift Auditor for Active Magnetic Suspension Wheel Hubs on Long-Range Lunar Terrain Vehicles (LTV).</p>
+          </div>
+          <div class="text-right font-mono-code">
+            <div class="text-xs text-gray-400 uppercase">Phase I Contract Value</div>
+            <div class="text-2xl font-bold text-emerald-400">$225,000</div>
+            <div class="text-[11px] text-cyan-400">6-Month Period of Performance</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Partner Allocation & Budget Cards -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        
+        <!-- Primary Contractor -->
+        <div class="hud-card p-5 rounded-2xl border border-gray-800 space-y-2">
+          <div class="flex items-center justify-between text-xs text-gray-400 border-b border-gray-800 pb-2">
+            <span class="font-bold text-white uppercase">Small Business Prime</span>
+            <span class="text-cyan-400 font-mono-code font-bold">70.0% ($157,500)</span>
+          </div>
+          <h4 class="text-sm font-bold text-cyan-300">RFWave Code Dynamics LLC</h4>
+          <p class="text-xs text-gray-400">
+            Lead software architecture, real-time $\mathcal{H}_\infty$ adaptive DSP implementation, Nyquist stability monitoring UI, and firmware porting for flight FPGA controllers.
+          </p>
+          <div class="text-[11px] font-mono-code text-gray-400 pt-2 border-t border-gray-800">
+            Key Personnel: Principal Investigator (1.0 FTE), Control Systems Lead (0.5 FTE).
+          </div>
+        </div>
+
+        <!-- Research Institution Partner (STTR Focus) -->
+        <div class="hud-card p-5 rounded-2xl border border-gray-800 space-y-2">
+          <div class="flex items-center justify-between text-xs text-gray-400 border-b border-gray-800 pb-2">
+            <span class="font-bold text-white uppercase">STTR Research Institution</span>
+            <span class="text-purple-400 font-mono-code font-bold">30.0% ($67,500)</span>
+          </div>
+          <h4 class="text-sm font-bold text-purple-300">University of Central Florida (UCF)</h4>
+          <p class="text-xs text-gray-400">
+            Center for Advanced Turbomachinery and Energy Research (CATER) & Exolith Lunar Dust Laboratory. Hardware vacuum test rig with LHS-1 lunar regolith simulant.
+          </p>
+          <div class="text-[11px] font-mono-code text-gray-400 pt-2 border-t border-gray-800">
+            Subcontract Co-PI: Faculty Rotor-Dynamics Lead + 1 Graduate Research Assistant.
+          </div>
+        </div>
+
+        <!-- NASA Mission Relevance -->
+        <div class="hud-card p-5 rounded-2xl border border-gray-800 space-y-2">
+          <div class="flex items-center justify-between text-xs text-gray-400 border-b border-gray-800 pb-2">
+            <span class="font-bold text-white uppercase">NASA Stakeholders</span>
+            <span class="text-amber-400 font-mono-code font-bold">Artemis LTV & VIPER</span>
+          </div>
+          <h4 class="text-sm font-bold text-amber-300">NASA Glenn & Marshall Centers</h4>
+          <p class="text-xs text-gray-400">
+            Addresses the critical Achilles' heel of mechanical bearings in permanent shadowed regions (PSR): mechanical seals shred under jagged volcanic glass within $300\,\text{km}$.
+          </p>
+          <div class="text-[11px] font-mono-code text-gray-400 pt-2 border-t border-gray-800">
+            Target Target: 10-year rover service life with 0 wear parts.
+          </div>
+        </div>
+
+      </div>
+
+      <!-- 6-Month Work Breakdown Milestones -->
+      <div class="hud-card p-6 rounded-2xl border border-gray-800 space-y-4">
+        <h3 class="text-base font-bold text-white flex items-center space-x-2">
+          <i data-lucide="calendar" class="w-5 h-5 text-cyan-400"></i>
+          <span>Phase I Detailed 6-Month Work Breakdown Structure (WBS)</span>
+        </h3>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          
+          <div class="p-4 rounded-xl bg-gray-950 border border-gray-800 space-y-2">
+            <div class="flex items-center justify-between font-mono-code text-xs">
+              <span class="text-cyan-400 font-bold">Month 1 – 2</span>
+              <span class="text-gray-400">Milestone 1</span>
+            </div>
+            <h4 class="text-xs font-semibold text-white">Kinetic & Particulate Coupling Modeling</h4>
+            <p class="text-[11px] text-gray-400 leading-relaxed">
+              Formulate 4-DOF rotor dynamic model including gyroscopic cross-coupling and Navier-Stokes squeeze film shear with abrasive lunar simulant (LHS-1).
+            </p>
+            <div class="text-[10px] text-cyan-300 font-mono-code">Deliverable: Validated MathWorks sim & phase-lag matrix.</div>
+          </div>
+
+          <div class="p-4 rounded-xl bg-gray-950 border border-gray-800 space-y-2">
+            <div class="flex items-center justify-between font-mono-code text-xs">
+              <span class="text-purple-400 font-bold">Month 3</span>
+              <span class="text-gray-400">Milestone 2</span>
+            </div>
+            <h4 class="text-xs font-semibold text-white">State Observer Inversion Algorithm</h4>
+            <p class="text-[11px] text-gray-400 leading-relaxed">
+              Synthesize extended Kalman filter observer estimating dust density $\phi$ and phase margin $\Phi_m$ strictly from coil drive telemetry with zero added mass.
+            </p>
+            <div class="text-[10px] text-purple-300 font-mono-code">Deliverable: Real-time firmware C-library for Xilinx Ultrascale+.</div>
+          </div>
+
+          <div class="p-4 rounded-xl bg-gray-950 border border-gray-800 space-y-2">
+            <div class="flex items-center justify-between font-mono-code text-xs">
+              <span class="text-amber-400 font-bold">Month 4 – 5</span>
+              <span class="text-gray-400">Milestone 3</span>
+            </div>
+            <h4 class="text-xs font-semibold text-white">Closed-Loop Controller at UCF CATER Rig</h4>
+            <p class="text-[11px] text-gray-400 leading-relaxed">
+              Execute hardware-in-the-loop (HIL) vacuum chamber tests at UCF CATER labs. Inject pressurized abrasive LHS-1 dust during 1,200 RPM rotation.
+            </p>
+            <div class="text-[10px] text-amber-300 font-mono-code">Deliverable: Demonstrated 0 touchdown failures over 50 hrs.</div>
+          </div>
+
+          <div class="p-4 rounded-xl bg-gray-950 border border-gray-800 space-y-2">
+            <div class="flex items-center justify-between font-mono-code text-xs">
+              <span class="text-emerald-400 font-bold">Month 6</span>
+              <span class="text-gray-400">Milestone 4</span>
+            </div>
+            <h4 class="text-xs font-semibold text-white">Phase II Transition Blueprint</h4>
+            <p class="text-[11px] text-gray-400 leading-relaxed">
+              Complete full mechanical and electrical specifications for 500 mm flight-scale wheel hub prototype for NASA Lunar Terrain Vehicle testing.
+            </p>
+            <div class="text-[10px] text-emerald-300 font-mono-code">Deliverable: Phase II proposal ($1.15M) and final tech report.</div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Phase II Hardware Transition Roadmap -->
+      <div class="hud-card p-6 rounded-2xl border border-gray-800 bg-gray-950/40">
+        <h3 class="text-base font-bold text-white mb-2 flex items-center space-x-2">
+          <i data-lucide="rocket" class="w-5 h-5 text-purple-400"></i>
+          <span>NASA Phase II & Flight Demonstration Roadmap (TRL-4 to TRL-7)</span>
+        </h3>
+        <p class="text-xs text-gray-300 mb-4 leading-relaxed">
+          The successful completion of Phase I enables a seamless transition into a 24-month, $1,150,000 NASA STTR Phase II program. Hardware builds will take place in partnership with UCF’s cleanrooms and thermal vacuum chambers, leading directly to qualification for the 2029 Artemis Commercial Lunar Payload Services (CLPS) missions.
+        </p>
+
+        <div class="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs font-mono-code">
+          <div class="w-full bg-gray-900 p-3 rounded-lg border border-gray-800 text-center">
+            <div class="text-gray-400">Phase I (Current)</div>
+            <div class="text-white font-bold mt-1">TRL-4 (Lab Benchtop)</div>
+            <div class="text-cyan-400 text-[10px] mt-0.5">$225k NASA STTR</div>
+          </div>
+          <i data-lucide="arrow-right" class="w-5 h-5 text-gray-600 hidden sm:block"></i>
+          <div class="w-full bg-gray-900 p-3 rounded-lg border border-gray-800 text-center">
+            <div class="text-gray-400">Phase II (2027-2028)</div>
+            <div class="text-white font-bold mt-1">TRL-6 (Thermal Vac Qual)</div>
+            <div class="text-purple-400 text-[10px] mt-0.5">$1.15M Prototype Build</div>
+          </div>
+          <i data-lucide="arrow-right" class="w-5 h-5 text-gray-600 hidden sm:block"></i>
+          <div class="w-full bg-gray-900 p-3 rounded-lg border border-gray-800 text-center">
+            <div class="text-gray-400">Phase III Commercial (2029+)</div>
+            <div class="text-white font-bold mt-1">TRL-7+ (Lunar Surface Ops)</div>
+            <div class="text-emerald-400 text-[10px] mt-0.5">Artemis LTV Prime Supply</div>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ========================================================================= -->
+    <!-- TAB 4: COMMERCIAL & NATIONWIDE ARR BREAKDOWN -->
+    <!-- ========================================================================= -->
+    <section id="viewARR" class="hidden space-y-6">
+      
+      <!-- Executive Summary Callout -->
+      <div class="hud-card p-6 rounded-2xl border border-gray-800 bg-gradient-to-r from-emerald-950/30 via-gray-950 to-cyan-950/30">
+        <div class="flex flex-wrap items-center justify-between gap-4">
+          <div class="space-y-1 max-w-3xl">
+            <span class="px-2.5 py-0.5 rounded text-xs font-mono-code font-bold bg-emerald-950 text-emerald-300 border border-emerald-700">Civil & Commercial Dual-Use Market</span>
+            <h2 class="text-2xl font-bold text-white tracking-tight">MagLevWheel Enterprise TAM: $218.4M Nationwide Mature ARR</h2>
+            <p class="text-xs sm:text-sm text-gray-300">
+              Eliminating physical friction bearings and catastrophic dust contamination across industrial autonomous heavy haulers, semiconductor vacuum wafer handling, and severe-environment civil drivetrains.
+            </p>
+          </div>
+          <div class="p-4 rounded-xl bg-gray-900/90 border border-emerald-700/60 font-mono-code text-right">
+            <div class="text-xs text-gray-400">Enterprise Valuation @ 10x ARR</div>
+            <div class="text-2xl font-bold text-emerald-400">$2.18 Billion</div>
+            <div class="text-[10px] text-cyan-400">SaaS / Telemetry Maintenance Model</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ARR Breakdown Table (6 Verticals) -->
+      <div class="hud-card p-5 rounded-2xl border border-gray-800 space-y-3">
+        <h3 class="text-sm font-bold text-white flex items-center space-x-2">
+          <i data-lucide="table" class="w-4 h-4 text-emerald-400"></i>
+          <span>Nationwide Commercial ARR Distribution Matrix</span>
+        </h3>
+        
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs font-mono-code border-collapse">
+            <thead>
+              <tr class="border-b border-gray-800 text-gray-400 bg-gray-950/80">
+                <th class="p-3">Commercial Vertical</th>
+                <th class="p-3">Target Civil Application</th>
+                <th class="p-3">Pricing Metric / Runtime Seat</th>
+                <th class="p-3">Asset Base (Units Nationwide)</th>
+                <th class="p-3 text-right">Mature Annual ARR</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-800/60 text-gray-300">
+              <tr>
+                <td class="p-3 font-semibold text-white">1. Autonomous Open-Pit Mining</td>
+                <td class="p-3">400-Ton Haul Trucks in Abrasive Silica/Iron Ore Pits</td>
+                <td class="p-3 text-cyan-400">$18,000 / hub / year</td>
+                <td class="p-3">3,200 Autonomous Haulers (12,800 hubs)</td>
+                <td class="p-3 text-right font-bold text-emerald-400">$64.8M</td>
+              </tr>
+              <tr>
+                <td class="p-3 font-semibold text-white">2. Semiconductor EUV Foundries</td>
+                <td class="p-3">High-Vacuum Wafer Transport & AMB Stepper Spindles</td>
+                <td class="p-3 text-cyan-400">$45,000 / machine / year</td>
+                <td class="p-3">940 Active Fab Cleanroom Lines</td>
+                <td class="p-3 text-right font-bold text-emerald-400">$42.3M</td>
+              </tr>
+              <tr>
+                <td class="p-3 font-semibold text-white">3. Commercial Artemis & CLPS</td>
+                <td class="p-3">Commercial Lunar Landers, VIPER-class, & Mining Rovers</td>
+                <td class="p-3 text-cyan-400">$120,000 / rover license</td>
+                <td class="p-3">220 Flight Rover Chassis & Testbeds</td>
+                <td class="p-3 text-right font-bold text-emerald-400">$26.4M</td>
+              </tr>
+              <tr>
+                <td class="p-3 font-semibold text-white">4. Utility-Scale Desert Solar</td>
+                <td class="p-3">Robotic PV Cleaning Trackers in Sandstorm Corridors</td>
+                <td class="p-3 text-cyan-400">$480 / cleaning rover / year</td>
+                <td class="p-3">78,000 Desert Cleaning Crawler Drones</td>
+                <td class="p-3 text-right font-bold text-emerald-400">$37.4M</td>
+              </tr>
+              <tr>
+                <td class="p-3 font-semibold text-white">5. Heavy Rail & Maglev Bogies</td>
+                <td class="p-3">Non-Contact Freight Axle Suspension Monitoring</td>
+                <td class="p-3 text-cyan-400">$1,600 / railcar bogie / year</td>
+                <td class="p-3">18,500 Class-I High-Speed Bogies</td>
+                <td class="p-3 text-right font-bold text-emerald-400">$29.6M</td>
+              </tr>
+              <tr>
+                <td class="p-3 font-semibold text-white">6. High-Dust Agrochemicals</td>
+                <td class="p-3">Potash, Phosphate & Fertilizer Pneumatic Conveyors</td>
+                <td class="p-3 text-cyan-400">$4,500 / continuous turbine hub</td>
+                <td class="p-3">3,980 Severe Salt/Dust Turbines</td>
+                <td class="p-3 text-right font-bold text-emerald-400">$17.9M</td>
+              </tr>
+              <tr class="bg-gray-950 font-bold border-t-2 border-emerald-600">
+                <td class="p-3 text-white uppercase" colspan="4">Total Mature Nationwide Annual Recurring Revenue (Civil/Commercial)</td>
+                <td class="p-3 text-right text-emerald-400 text-sm">$218.4M</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Industry Deep-Dive Cards (6 Cards) -->
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+
+        <!-- Deep Dive 1 -->
+        <div class="hud-card p-5 rounded-2xl border border-gray-800 space-y-3">
+          <div class="flex items-center space-x-2 text-cyan-400 border-b border-gray-800 pb-2">
+            <i data-lucide="truck" class="w-4 h-4"></i>
+            <h4 class="text-sm font-bold text-white">Autonomous Heavy Mining</h4>
+          </div>
+          <div>
+            <div class="text-[11px] font-semibold text-cyan-300">Physics in 1 Sentence:</div>
+            <p class="text-xs text-gray-300 mt-0.5">
+              Sub-micron quartz particles breach grease seals, triggering mechanical roller bearing micro-spalling that shifts axle dynamic phase resonance $\Delta \theta$ by over $40^\circ$.
+            </p>
+          </div>
+          <div class="bg-gray-950 p-2.5 rounded-lg border border-gray-800">
+            <div class="text-[11px] font-semibold text-amber-300">Why Others Missed This (Plain English):</div>
+            <p class="text-xs text-gray-400 mt-0.5">
+              Legacy operators continually pump massive grease canisters through mechanical seals and replace $45,000 bearings every 6 months, treating catastrophic bearing seizure as unavoidable wear-and-tear.
+            </p>
+          </div>
+        </div>
+
+        <!-- Deep Dive 2 -->
+        <div class="hud-card p-5 rounded-2xl border border-gray-800 space-y-3">
+          <div class="flex items-center space-x-2 text-purple-400 border-b border-gray-800 pb-2">
+            <i data-lucide="microchip" class="w-4 h-4"></i>
+            <h4 class="text-sm font-bold text-white">Semiconductor EUV Foundries</h4>
+          </div>
+          <div>
+            <div class="text-[11px] font-semibold text-purple-300">Physics in 1 Sentence:</div>
+            <p class="text-xs text-gray-300 mt-0.5">
+              In $10^{-8}\,\text{Torr}$ cleanroom vacuum, outgassing greases condense on 2nm optical lithography mirrors, requiring frictionless magnetic levitation bearings monitored against tin aerosol debris.
+            </p>
+          </div>
+          <div class="bg-gray-950 p-2.5 rounded-lg border border-gray-800">
+            <div class="text-[11px] font-semibold text-amber-300">Why Others Missed This (Plain English):</div>
+            <p class="text-xs text-gray-400 mt-0.5">
+              Incumbents shut down multi-million dollar EUV scanner tools to swab cleanroom tracks manually whenever debris induces stepper vibration, rather than adaptively shifting AMB magnetic pole feedback.
+            </p>
+          </div>
+        </div>
+
+        <!-- Deep Dive 3 -->
+        <div class="hud-card p-5 rounded-2xl border border-gray-800 space-y-3">
+          <div class="flex items-center space-x-2 text-amber-400 border-b border-gray-800 pb-2">
+            <i data-lucide="moon" class="w-4 h-4"></i>
+            <h4 class="text-sm font-bold text-white">Commercial Lunar / Artemis</h4>
+          </div>
+          <div>
+            <div class="text-[11px] font-semibold text-amber-300">Physics in 1 Sentence:</div>
+            <p class="text-xs text-gray-300 mt-0.5">
+              Unweathered, razor-sharp lunar regolith with electrostatic charging forms abrasive slurry in grease, cutting conventional rotary seals to ribbons in under 40 hours of wheel roll.
+            </p>
+          </div>
+          <div class="bg-gray-950 p-2.5 rounded-lg border border-gray-800">
+            <div class="text-[11px] font-semibold text-amber-300">Why Others Missed This (Plain English):</div>
+            <p class="text-xs text-gray-400 mt-0.5">
+              Mission designs historically relied on sacrificial seals and short mission lifespans (Apollo rovers drove $< 40\,\text{km}$ total); long-term Artemis mining requires permanent non-contact levitation.
+            </p>
+          </div>
+        </div>
+
+        <!-- Deep Dive 4 -->
+        <div class="hud-card p-5 rounded-2xl border border-gray-800 space-y-3">
+          <div class="flex items-center space-x-2 text-emerald-400 border-b border-gray-800 pb-2">
+            <i data-lucide="sun" class="w-4 h-4"></i>
+            <h4 class="text-sm font-bold text-white">Desert Utility Solar Robotics</h4>
+          </div>
+          <div>
+            <div class="text-[11px] font-semibold text-emerald-300">Physics in 1 Sentence:</div>
+            <p class="text-xs text-gray-300 mt-0.5">
+              Habitant sandstorm silt packs into crawler wheel gearboxes, tripling motor current draw and draining battery packs before morning solar tracking can initiate.
+            </p>
+          </div>
+          <div class="bg-gray-950 p-2.5 rounded-lg border border-gray-800">
+            <div class="text-[11px] font-semibold text-amber-300">Why Others Missed This (Plain English):</div>
+            <p class="text-xs text-gray-400 mt-0.5">
+              Solar operators use diesel water-spray trucks with manual labor crews to wash panels because automated crawler robots constantly stall when sand seizes their wheel hubs.
+            </p>
+          </div>
+        </div>
+
+        <!-- Deep Dive 5 -->
+        <div class="hud-card p-5 rounded-2xl border border-gray-800 space-y-3">
+          <div class="flex items-center space-x-2 text-blue-400 border-b border-gray-800 pb-2">
+            <i data-lucide="train" class="w-4 h-4"></i>
+            <h4 class="text-sm font-bold text-white">Heavy Rail & Maglev Bogies</h4>
+          </div>
+          <div>
+            <div class="text-[11px] font-semibold text-blue-300">Physics in 1 Sentence:</div>
+            <p class="text-xs text-gray-300 mt-0.5">
+              Brake pad particulate dust and ballast debris generate electromagnetic phase delays between bogie displacement and magnetic guide actuators, risking track strike at 200 mph.
+            </p>
+          </div>
+          <div class="bg-gray-950 p-2.5 rounded-lg border border-gray-800">
+            <div class="text-[11px] font-semibold text-amber-300">Why Others Missed This (Plain English):</div>
+            <p class="text-xs text-gray-400 mt-0.5">
+              Rail inspectors rely on infrared wayside hotbox detectors that only alert dispatch after bearings have already overheated to red-hot failure points, risking high-speed derailments.
+            </p>
+          </div>
+        </div>
+
+        <!-- Deep Dive 6 -->
+        <div class="hud-card p-5 rounded-2xl border border-gray-800 space-y-3">
+          <div class="flex items-center space-x-2 text-rose-400 border-b border-gray-800 pb-2">
+            <i data-lucide="factory" class="w-4 h-4"></i>
+            <h4 class="text-sm font-bold text-white">Chemical & Fertilizer Dust</h4>
+          </div>
+          <div>
+            <div class="text-[11px] font-semibold text-rose-300">Physics in 1 Sentence:</div>
+            <p class="text-xs text-gray-300 mt-0.5">
+              Hygroscopic potassium chloride and sulfur dust crystallize inside roller gaps upon exposure to humidity, seizing mechanical axles through catastrophic chemical binding.
+            </p>
+          </div>
+          <div class="bg-gray-950 p-2.5 rounded-lg border border-gray-800">
+            <div class="text-[11px] font-semibold text-amber-300">Why Others Missed This (Plain English):</div>
+            <p class="text-xs text-gray-400 mt-0.5">
+              Chemical plants encase drivetrains in heavy nitrogen purge enclosures that are expensive to maintain and constantly leak during plant turnaround operations.
+            </p>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Contact & Action Footer Banner -->
+      <div class="hud-card p-6 rounded-2xl border border-gray-800 flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h4 class="text-base font-bold text-white">Enterprise Integration & Defense/Civil Licensing</h4>
+          <p class="text-xs text-gray-400">Request STTR Phase II Technical Data Packages (TDP) or enterprise software API evaluation licenses.</p>
+        </div>
+        <div class="flex items-center space-x-3">
+          <a href="mailto:support@rfwavecode.com" class="px-4 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-black text-xs font-bold transition-all shadow-lg shadow-cyan-600/30 flex items-center space-x-2">
+            <i data-lucide="mail" class="w-4 h-4"></i>
+            <span>support@rfwavecode.com</span>
+          </a>
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- FOOTER -->
+  <footer class="border-t border-gray-800/80 bg-[#04060b] py-4 text-xs font-mono-code text-gray-400">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-wrap items-center justify-between gap-2">
+      <div class="flex items-center space-x-2">
+        <span class="w-2 h-2 rounded-full bg-cyan-400"></span>
+        <span>MagLevWheel Platform v4.2.1-Lunar</span>
+        <span class="text-gray-400">|</span>
+        <span>NASA STTR DTT-26 Compliant</span>
+      </div>
+      <div>
+        <span>Partner: UCF CATER & Exolith Simulant Labs</span>
+      </div>
+    </div>
+  </footer>
+
+  <!-- ========================================================================= -->
+  <!-- JAVASCRIPT: LOGIC, SIMULATION ENGINE, CANVASES, AND CHARTS -->
+  <!-- ========================================================================= -->
+  <script>
+    // Tab switching mapping dictionary
+    const tabMapping = {
+      'sim': { viewId: 'viewSim', btnId: 'tabBtnSim' },
+      'physics': { viewId: 'viewPhysics', btnId: 'tabBtnPhysics' },
+      'proposal': { viewId: 'viewProposal', btnId: 'tabBtnProposal' },
+      'arr': { viewId: 'viewARR', btnId: 'tabBtnARR' }
+    };
+
+    function switchTab(targetKey) {
+      Object.keys(tabMapping).forEach(key => {
+        const item = tabMapping[key];
+        const viewEl = document.getElementById(item.viewId);
+        const btnEl = document.getElementById(item.btnId);
+        
+        if (key === targetKey) {
+          viewEl.classList.remove('hidden');
+          btnEl.className = "flex items-center space-x-2 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all text-white bg-cyan-600/30 border border-cyan-500/50 shadow-sm shadow-cyan-500/20";
+        } else {
+          viewEl.classList.add('hidden');
+          btnEl.className = "flex items-center space-x-2 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all text-gray-400 hover:text-white hover:bg-gray-900 border border-transparent";
+        }
+      });
+
+      // Immediate MathJax trigger on tab switch
+      if (window.MathJax && window.MathJax.typesetPromise) {
+        window.MathJax.typesetPromise().catch(err => console.debug(err));
+      }
+
+      // If returning to simulation tab, resize canvas and re-render
+      if (targetKey === 'sim') {
+        setTimeout(() => {
+          resizeCanvas();
+        }, 50);
+      }
+    }
+
+    // =========================================================================
+    // SIMULATION STATE & VARIABLES
+    // =========================================================================
+    const state = {
+      rpm: 420,             // Wheel RPM (v)
+      dustLevel: 18,        // % regolith ingress
+      dampingGain: 1.45,    // Adaptive gain
+      autoObserver: true,   // Autonomous H-infinity observer
+      faultInjected: false, // Regolith shock transient
+      faultTime: 0,
+      
+      // Dynamic internal states
+      rotorX: 0,            // mm offset
+      rotorY: 0,
+      rotorAngle: 0,        // rotation radians
+      phaseAngle: -32.4,    // deg
+      currentX: 1.82,       // Amperes
+      currentY: 1.76,
+      airGap: 1.25,         // mm
+      stabilityMargin: 24.2,// dB
+      isStable: true,
+
+      // Regolith particles for visualizer
+      particles: []
+    };
+
+    // Initialize particles
+    for (let i = 0; i < 90; i++) {
+      state.particles.push({
+        radius: 60 + Math.random() * 85,
+        theta: Math.random() * Math.PI * 2,
+        speed: (Math.random() * 0.02 + 0.005),
+        size: Math.random() * 2.2 + 0.8,
+        opacity: Math.random() * 0.7 + 0.3
+      });
+    }
+
+    // =========================================================================
+    // CANVAS RENDERING ENGINE (AMB HUB CROSS SECTION)
+    // =========================================================================
+    const canvas = document.getElementById('hubCanvas');
+    const ctx = canvas.getContext('2d');
+
+    function resizeCanvas() {
+      const rect = canvas.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      const w = rect.width || 600;
+      const h = rect.height || 340;
+      
+      canvas.width = w * dpr;
+      canvas.height = h * dpr;
+      ctx.resetTransform();
+      ctx.scale(dpr, dpr);
+    }
+
+    window.addEventListener('resize', resizeCanvas);
+
+    function drawHubVisualizer() {
+      const rect = canvas.getBoundingClientRect();
+      const width = rect.width || 600;
+      const height = rect.height || 340;
+      const centerX = width / 2;
+      const centerY = height / 2;
+
+      ctx.clearRect(0, 0, width, height);
+
+      // Background subtle grid
+      ctx.strokeStyle = 'rgba(15, 23, 42, 0.6)';
+      ctx.lineWidth = 1;
+      const step = 30;
+      for (let x = 0; x < width; x += step) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, height);
+        ctx.stroke();
+      }
+      for (let y = 0; y < height; y += step) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(width, y);
+        ctx.stroke();
+      }
+
+      // Outer Stator Housing
+      const statorOuterR = Math.min(width, height) * 0.44;
+      const statorInnerR = statorOuterR * 0.76;
+      const rotorRadius = statorInnerR - (state.airGap * 14); // visual scale of air gap
+
+      // Stator outer ring
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, statorOuterR, 0, Math.PI * 2);
+      ctx.fillStyle = '#0a0f1d';
+      ctx.fill();
+      ctx.strokeStyle = '#1e293b';
+      ctx.lineWidth = 4;
+      ctx.stroke();
+
+      // Draw 4 Heteropolar AMB Coils / Poles (North, East, South, West)
+      const poleAngles = [0, Math.PI / 2, Math.PI, (3 * Math.PI) / 2];
+      const coilColors = ['#06b6d4', '#8b5cf6', '#06b6d4', '#8b5cf6'];
+
+      poleAngles.forEach((angle, idx) => {
+        const poleX = centerX + Math.cos(angle) * (statorInnerR + 18);
+        const poleY = centerY + Math.sin(angle) * (statorInnerR + 18);
+
+        // Electromagnetic Pole Core
+        ctx.save();
+        ctx.translate(poleX, poleY);
+        ctx.rotate(angle);
+        
+        // Coil body
+        ctx.fillStyle = '#111827';
+        ctx.strokeStyle = coilColors[idx];
+        ctx.lineWidth = 2;
+        ctx.fillRect(-16, -14, 32, 28);
+        ctx.strokeRect(-16, -14, 32, 28);
+
+        // Active flux coil windings
+        ctx.strokeStyle = coilColors[idx];
+        ctx.lineWidth = 1;
+        for (let i = -10; i <= 10; i += 5) {
+          ctx.beginPath();
+          ctx.moveTo(i, -12);
+          ctx.lineTo(i, 12);
+          ctx.stroke();
+        }
+
+        ctx.restore();
+
+        // Magnetic Flux Lines from Pole toward Rotor
+        const fluxRotorX = centerX + state.rotorX + Math.cos(angle) * rotorRadius;
+        const fluxRotorY = centerY + state.rotorY + Math.sin(angle) * rotorRadius;
+
+        ctx.beginPath();
+        ctx.moveTo(poleX, poleY);
+        ctx.lineTo(fluxRotorX, fluxRotorY);
+        ctx.strokeStyle = (state.isStable) ? 'rgba(6, 182, 212, 0.4)' : 'rgba(239, 68, 68, 0.6)';
+        ctx.lineWidth = 1.5 + Math.sin(Date.now() * 0.01 + idx) * 0.8;
+        ctx.setLineDash([4, 4]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      });
+
+      // Stator Bore inner reference limit (dashed circle)
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, statorInnerR, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(75, 85, 99, 0.5)';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      // Draw Ingressing Lunar Regolith Particles
+      const activeParticleLimit = Math.floor((state.dustLevel / 100) * state.particles.length);
+      for (let i = 0; i < state.particles.length; i++) {
+        const p = state.particles[i];
+        p.theta += p.speed * (state.rpm / 300 + 0.2);
+
+        if (i < activeParticleLimit) {
+          // Particles inside magnetic air-gap region
+          const currentR = statorInnerR - 5 - (Math.sin(p.theta * 3) * (state.airGap * 8));
+          const px = centerX + Math.cos(p.theta) * currentR;
+          const py = centerY + Math.sin(p.theta) * currentR;
+
+          ctx.beginPath();
+          ctx.arc(px, py, p.size, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(245, 158, 11, ${p.opacity})`;
+          ctx.shadowColor = '#f59e0b';
+          ctx.shadowBlur = 4;
+          ctx.fill();
+          ctx.shadowBlur = 0;
+        }
+      }
+
+      // Center Levitated Rotor
+      const rotorCenterX = centerX + state.rotorX;
+      const rotorCenterY = centerY + state.rotorY;
+
+      // Rotor Outer Body
+      ctx.beginPath();
+      ctx.arc(rotorCenterX, rotorCenterY, rotorRadius, 0, Math.PI * 2);
+      ctx.fillStyle = '#0f172a';
+      ctx.fill();
+      ctx.strokeStyle = (state.isStable) ? '#8b5cf6' : '#ef4444';
+      ctx.lineWidth = 3;
+      ctx.stroke();
+
+      // Rotor Spokes / Texture showing rotation
+      state.rotorAngle += (state.rpm / 60) * 0.08;
+      ctx.save();
+      ctx.translate(rotorCenterX, rotorCenterY);
+      ctx.rotate(state.rotorAngle);
+
+      for (let s = 0; s < 6; s++) {
+        const spokeA = (s * Math.PI) / 3;
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(Math.cos(spokeA) * (rotorRadius - 4), Math.sin(spokeA) * (rotorRadius - 4));
+        ctx.strokeStyle = 'rgba(139, 92, 246, 0.5)';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      }
+
+      // Central Axle
+      ctx.beginPath();
+      ctx.arc(0, 0, rotorRadius * 0.28, 0, Math.PI * 2);
+      ctx.fillStyle = '#1e1b4b';
+      ctx.fill();
+      ctx.strokeStyle = '#c084fc';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      // Center dot
+      ctx.beginPath();
+      ctx.arc(0, 0, 3, 0, Math.PI * 2);
+      ctx.fillStyle = '#38bdf8';
+      ctx.fill();
+
+      ctx.restore();
+
+      // Eccentricity vector arrow (if displaced)
+      if (Math.abs(state.rotorX) > 0.5 || Math.abs(state.rotorY) > 0.5) {
+        ctx.beginPath();
+        ctx.moveTo(centerX, centerY);
+        ctx.lineTo(rotorCenterX, rotorCenterY);
+        ctx.strokeStyle = '#ef4444';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      }
+    }
+
+    // =========================================================================
+    // CHART.JS INITIALIZATION (PHASE-SPACE & TIME-SERIES)
+    // =========================================================================
+    let phaseSpaceChart, gapHistoryChart, currentHistoryChart;
+
+    // Generate Theoretical Baseline Curve & Anomaly Boundary for Phase Space
+    function generateNominalCurve() {
+      const pts = [];
+      for (let v = 0; v <= 1200; v += 60) {
+        // Nominal Phase: theta = - (25 + 0.025 * v)
+        const theta = -(25 + 0.025 * v);
+        pts.push({ x: v, y: theta });
+      }
+      return pts;
+    }
+
+    function generateHazardBoundary() {
+      const pts = [];
+      for (let v = 0; v <= 1200; v += 60) {
+        // Red hazard line: theta <= - (50 + 0.04 * v)
+        const theta = -(48 + 0.038 * v);
+        pts.push({ x: v, y: theta });
+      }
+      return pts;
+    }
+
+    const nominalCurveData = generateNominalCurve();
+    const hazardBoundaryData = generateHazardBoundary();
+
+    function initCharts() {
+      // 1. Phase-Space Scatter Chart (v vs theta)
+      const ctxPhase = document.getElementById('phaseSpaceChart').getContext('2d');
+      phaseSpaceChart = new Chart(ctxPhase, {
+        type: 'scatter',
+        data: {
+          datasets: [
+            {
+              label: 'Live Operating Point (v, θ)',
+              data: [{ x: state.rpm, y: state.phaseAngle }],
+              backgroundColor: '#06b6d4',
+              borderColor: '#ffffff',
+              borderWidth: 2,
+              pointRadius: 9,
+              pointHoverRadius: 11,
+              showLine: false,
+              order: 1
+            },
+            {
+              label: 'Nominal Operating Corridor',
+              data: nominalCurveData,
+              borderColor: '#10b981',
+              backgroundColor: 'transparent',
+              borderWidth: 2,
+              pointRadius: 0,
+              showLine: true,
+              borderDash: [5, 5],
+              order: 3
+            },
+            {
+              label: 'Unstable Resonance Boundary (Phase Margin Loss)',
+              data: hazardBoundaryData,
+              borderColor: '#ef4444',
+              backgroundColor: 'rgba(239, 68, 68, 0.1)',
+              borderWidth: 2,
+              fill: 'start',
+              pointRadius: 0,
+              showLine: true,
+              borderDash: [4, 4],
+              order: 4
+            },
+            {
+              label: 'Historical Trajectory',
+              data: [{ x: state.rpm, y: state.phaseAngle }],
+              borderColor: 'rgba(6, 182, 212, 0.4)',
+              backgroundColor: 'transparent',
+              borderWidth: 1.5,
+              pointRadius: 2,
+              showLine: true,
+              order: 2
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: false,
+          scales: {
+            x: {
+              title: {
+                display: true,
+                text: 'Wheel Rotational Speed v (RPM)',
+                color: '#94a3b8',
+                font: { family: 'JetBrains Mono', size: 10 }
+              },
+              min: 0,
+              max: 1250,
+              grid: { color: 'rgba(30, 41, 59, 0.5)' },
+              ticks: { color: '#94a3b8', font: { family: 'JetBrains Mono', size: 9 } }
+            },
+            y: {
+              title: {
+                display: true,
+                text: 'Sensor-Actuator Phase Angle θ (deg)',
+                color: '#94a3b8',
+                font: { family: 'JetBrains Mono', size: 10 }
+              },
+              min: -110,
+              max: -10,
+              grid: { color: 'rgba(30, 41, 59, 0.5)' },
+              ticks: { color: '#94a3b8', font: { family: 'JetBrains Mono', size: 9 } }
+            }
+          },
+          plugins: {
+            legend: {
+              position: 'top',
+              labels: {
+                color: '#cbd5e1',
+                boxWidth: 10,
+                font: { family: 'Inter', size: 10 }
+              }
+            },
+            tooltip: {
+              callbacks: {
+                label: function(c) {
+                  return `Speed: ${c.raw.x.toFixed(0)} RPM | Phase: ${c.raw.y.toFixed(1)}°`;
+                }
+              }
+            }
+          }
+        }
+      });
+
+      // 2. Air-gap time series chart
+      const ctxGap = document.getElementById('gapHistoryChart').getContext('2d');
+      const timeLabels = Array.from({ length: 30 }, (_, i) => `-${30 - i}s`);
+      gapHistoryChart = new Chart(ctxGap, {
+        type: 'line',
+        data: {
+          labels: timeLabels,
+          datasets: [{
+            label: 'Radial Gap δ(t) (mm)',
+            data: Array(30).fill(1.25),
+            borderColor: '#34d399',
+            backgroundColor: 'rgba(52, 211, 153, 0.1)',
+            borderWidth: 2,
+            tension: 0.3,
+            fill: true,
+            pointRadius: 0
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: false,
+          scales: {
+            x: { display: false },
+            y: {
+              min: 0.6,
+              max: 1.8,
+              grid: { color: 'rgba(30, 41, 59, 0.5)' },
+              ticks: { color: '#94a3b8', font: { family: 'JetBrains Mono', size: 8 } }
+            }
+          },
+          plugins: { legend: { display: false } }
+        }
+      });
+
+      // 3. Actuator Current time series chart
+      const ctxCur = document.getElementById('currentHistoryChart').getContext('2d');
+      currentHistoryChart = new Chart(ctxCur, {
+        type: 'line',
+        data: {
+          labels: timeLabels,
+          datasets: [
+            {
+              label: 'Coil Current X (A)',
+              data: Array(30).fill(1.8),
+              borderColor: '#06b6d4',
+              borderWidth: 1.5,
+              tension: 0.3,
+              pointRadius: 0
+            },
+            {
+              label: 'Coil Current Y (A)',
+              data: Array(30).fill(1.8),
+              borderColor: '#a855f7',
+              borderWidth: 1.5,
+              tension: 0.3,
+              pointRadius: 0
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: false,
+          scales: {
+            x: { display: false },
+            y: {
+              min: 0.5,
+              max: 4.8,
+              grid: { color: 'rgba(30, 41, 59, 0.5)' },
+              ticks: { color: '#94a3b8', font: { family: 'JetBrains Mono', size: 8 } }
+            }
+          },
+          plugins: {
+            legend: {
+              labels: { color: '#cbd5e1', boxWidth: 8, font: { size: 9 } }
+            }
+          }
+        }
+      });
+    }
+
+    // =========================================================================
+    // PHYSICS UPDATE LOOP & OBSERVER LOGIC
+    // =========================================================================
+    let tickCount = 0;
+    const historyTrajectory = [];
+
+    function updatePhysics() {
+      tickCount++;
+
+      // Gyroscopic coupling acceleration: proportional to v (RPM)
+      const omega = (state.rpm * 2 * Math.PI) / 60; // rad/s
+      const gyroCross = (0.015 * omega).toFixed(1);
+      document.getElementById('telemetryGyro').innerText = `${gyroCross} rad/s²`;
+
+      // Regolith particulate drag & phase lag computation
+      const dustIngressFraction = state.dustLevel / 100;
+      const particulateDrag = (0.002 + dustIngressFraction * 0.095).toFixed(3);
+      document.getElementById('telemetryDrag').innerText = `${particulateDrag} N·s/m`;
+
+      // Phase Angle:
+      // Base: -25 - (0.022 * v)
+      // Degradation due to dust: - (0.45 * dustLevel)
+      // Compensation from adaptive damping gain: + (18 * (gain - 1.0))
+      let uncompensatedPhase = -(25 + 0.022 * state.rpm + 0.45 * state.dustLevel);
+      let comp = 0;
+
+      if (state.autoObserver) {
+        // Autonomous H-infinity controller senses phase lag and commands adaptive lead network
+        comp = (state.dustLevel * 0.36) + (state.dampingGain - 1.0) * 14.0;
+      } else {
+        comp = (state.dampingGain - 1.0) * 10.0;
+      }
+
+      state.phaseAngle = uncompensatedPhase + comp;
+
+      // Handle transient regolith shock injection
+      if (state.faultInjected) {
+        state.faultTime += 0.08;
+        const shockWave = Math.sin(state.faultTime * 6) * 16 * Math.exp(-state.faultTime * 0.4);
+        state.phaseAngle -= Math.abs(shockWave);
+
+        if (state.faultTime > 7.0) {
+          state.faultInjected = false;
+          state.faultTime = 0;
+          document.getElementById('btnFaultText').innerText = "Inject Regolith Shock";
+        }
+      }
+
+      // Stability Evaluation vs Red Boundary
+      // Boundary equation at current RPM:
+      const hazardLimit = -(48 + 0.038 * state.rpm);
+      const phaseMargin = state.phaseAngle - hazardLimit;
+      state.isStable = phaseMargin > 3.0;
+
+      // Air-gap orbit and current dynamics
+      if (state.isStable) {
+        const noise = (Math.random() - 0.5) * (0.02 + dustIngressFraction * 0.06);
+        state.rotorX = Math.sin(tickCount * 0.15) * (0.08 + dustIngressFraction * 0.18) * 12;
+        state.rotorY = Math.cos(tickCount * 0.15) * (0.08 + dustIngressFraction * 0.18) * 12;
+        state.airGap = 1.25 + (Math.sin(tickCount * 0.1) * 0.04) + noise;
+        state.stabilityMargin = Math.max(8.0, 15.0 + phaseMargin * 0.7);
+
+        state.currentX = 1.8 + (Math.sin(tickCount * 0.12) * 0.4) + (dustIngressFraction * 1.1);
+        state.currentY = 1.8 + (Math.cos(tickCount * 0.12) * 0.4) + (dustIngressFraction * 1.1);
+      } else {
+        // Severe resonant wobble / unbalance
+        const wobble = Math.sin(tickCount * 0.4) * (2.2 + dustIngressFraction * 3.5);
+        state.rotorX = wobble * 7;
+        state.rotorY = Math.cos(tickCount * 0.4) * 6;
+        state.airGap = Math.max(0.45, 1.25 - Math.abs(wobble) * 0.12);
+        state.stabilityMargin = Math.max(1.2, phaseMargin * 0.4);
+
+        state.currentX = Math.min(4.8, 3.2 + Math.abs(wobble) * 0.6);
+        state.currentY = Math.min(4.8, 3.0 + Math.abs(wobble) * 0.6);
+      }
+
+      // Update UI Telemetry text
+      document.getElementById('metricRpm').innerHTML = `${state.rpm.toFixed(0)} <span class="text-xs text-gray-400">RPM</span>`;
+      const linearSpeed = ((state.rpm / 60) * 2 * Math.PI * 0.10).toFixed(2); // assuming 200mm radius wheel
+      document.getElementById('metricLinearVel').innerText = `${linearSpeed}`;
+      document.getElementById('metricPhase').innerHTML = `${state.phaseAngle.toFixed(1)}<span class="text-xs">°</span>`;
+      document.getElementById('metricGap').innerHTML = `${state.airGap.toFixed(2)} <span class="text-xs">mm</span>`;
+      
+      const badge = document.getElementById('statusBadge');
+      const dampingMarginText = document.getElementById('dampingMarginText');
+      const marginEl = document.getElementById('telemetryMargin');
+
+      if (state.isStable) {
+        badge.className = "inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-md text-xs font-bold font-mono-code mt-1.5 bg-emerald-950 text-emerald-400 border border-emerald-700/60 shadow-sm";
+        badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span><span>STABLE LEVITATION</span>`;
+        dampingMarginText.innerHTML = `Damping Margin: <span class="text-emerald-400 font-mono-code">${state.stabilityMargin.toFixed(1)} dB</span>`;
+        marginEl.className = "text-emerald-400";
+        marginEl.innerText = `+${phaseMargin.toFixed(1)}° (SAFE)`;
+      } else {
+        badge.className = "inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-md text-xs font-bold font-mono-code mt-1.5 bg-rose-950 text-rose-400 border border-rose-700/60 shadow-sm animate-bounce";
+        badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-rose-400 animate-ping"></span><span>TOUCHDOWN HAZARD</span>`;
+        dampingMarginText.innerHTML = `Damping Margin: <span class="text-rose-400 font-mono-code">${state.stabilityMargin.toFixed(1)} dB (CRITICAL)</span>`;
+        marginEl.className = "text-rose-400 font-bold";
+        marginEl.innerText = `${phaseMargin.toFixed(1)}° (DAMPING LOSS)`;
+      }
+
+      // HUD Badges
+      const forceVal = (120 + (state.dustLevel * 1.5) + (state.rpm * 0.08)).toFixed(1);
+      document.getElementById('hudForce').innerText = `${forceVal} N`;
+      
+      let dustDesc = "Hermetic (0 mg/cm³)";
+      if (state.dustLevel > 60) dustDesc = `Severe (${(state.dustLevel * 1.2).toFixed(0)} mg/cm³)`;
+      else if (state.dustLevel > 20) dustDesc = `Moderate (${(state.dustLevel * 0.8).toFixed(0)} mg/cm³)`;
+      document.getElementById('hudDust').innerText = dustDesc;
+
+      // Draw canvas
+      drawHubVisualizer();
+
+      // Update Chart telemetry periodically (every 3 ticks)
+      if (tickCount % 3 === 0) {
+        updateChartTelemetry();
+      }
+    }
+
+    function updateChartTelemetry() {
+      if (!phaseSpaceChart) return;
+
+      // 1. Update Phase Space Scatter Point & History
+      phaseSpaceChart.data.datasets[0].data = [{ x: state.rpm, y: state.phaseAngle }];
+      
+      historyTrajectory.push({ x: state.rpm, y: state.phaseAngle });
+      if (historyTrajectory.length > 20) historyTrajectory.shift();
+      phaseSpaceChart.data.datasets[3].data = [...historyTrajectory];
+      
+      phaseSpaceChart.update('none');
+
+      // 2. Update Strip Charts
+      if (gapHistoryChart) {
+        const gapData = gapHistoryChart.data.datasets[0].data;
+        gapData.shift();
+        gapData.push(state.airGap);
+        gapHistoryChart.update('none');
+      }
+
+      if (currentHistoryChart) {
+        const curXData = currentHistoryChart.data.datasets[0].data;
+        const curYData = currentHistoryChart.data.datasets[1].data;
+        curXData.shift();
+        curYData.shift();
+        curXData.push(state.currentX);
+        curYData.push(state.currentY);
+        currentHistoryChart.update('none');
+      }
+    }
+
+    // =========================================================================
+    // USER INTERACTION LISTENERS & CONTROLS
+    // =========================================================================
+    const sliderRpm = document.getElementById('sliderRpm');
+    const sliderDust = document.getElementById('sliderDust');
+    const sliderGain = document.getElementById('sliderGain');
+
+    sliderRpm.addEventListener('input', (e) => {
+      state.rpm = parseFloat(e.target.value);
+      document.getElementById('sliderRpmVal').innerText = `${state.rpm} RPM`;
+    });
+
+    sliderDust.addEventListener('input', (e) => {
+      state.dustLevel = parseFloat(e.target.value);
+      document.getElementById('sliderDustVal').innerText = `${state.dustLevel} %`;
+    });
+
+    sliderGain.addEventListener('input', (e) => {
+      state.dampingGain = parseFloat(e.target.value);
+      document.getElementById('sliderGainVal').innerText = `${state.dampingGain.toFixed(2)}`;
+    });
+
+    function toggleMassUnbalance() {
+      state.faultInjected = true;
+      state.faultTime = 0;
+      document.getElementById('btnFaultText').innerText = "Shock Injected!";
+    }
+
+    function toggleAutoObserver() {
+      state.autoObserver = !state.autoObserver;
+      const btn = document.getElementById('btnObserverText');
+      const hudState = document.getElementById('hudAdaptiveState');
+
+      if (state.autoObserver) {
+        btn.innerHTML = "Auto $\\mathcal{H}_\\infty$ Observer: ON";
+        hudState.innerText = "ENABLED";
+        hudState.className = "text-emerald-400 font-bold ml-1";
+      } else {
+        btn.innerHTML = "Auto $\\mathcal{H}_\\infty$ Observer: OFF";
+        hudState.innerText = "BYPASSED (OPEN LOOP)";
+        hudState.className = "text-rose-400 font-bold ml-1";
+      }
+
+      if (window.MathJax && window.MathJax.typesetPromise) {
+        window.MathJax.typesetPromise().catch(err => console.debug(err));
+      }
+    }
+
+    function resetSimulationParameters() {
+      state.rpm = 420;
+      state.dustLevel = 18;
+      state.dampingGain = 1.45;
+      state.autoObserver = true;
+      state.faultInjected = false;
+      state.faultTime = 0;
+
+      sliderRpm.value = 420;
+      sliderDust.value = 18;
+      sliderGain.value = 1.45;
+
+      document.getElementById('sliderRpmVal').innerText = "420 RPM";
+      document.getElementById('sliderDustVal').innerText = "18 %";
+      document.getElementById('sliderGainVal').innerText = "1.45";
+
+      const btn = document.getElementById('btnObserverText');
+      btn.innerHTML = "Auto $\\mathcal{H}_\\infty$ Observer: ON";
+      document.getElementById('hudAdaptiveState').innerText = "ENABLED";
+      document.getElementById('hudAdaptiveState').className = "text-emerald-400 font-bold ml-1";
+
+      historyTrajectory.length = 0;
+
+      if (window.MathJax && window.MathJax.typesetPromise) {
+        window.MathJax.typesetPromise().catch(err => console.debug(err));
+      }
+    }
+
+    // =========================================================================
+    // WINDOW ONLOAD INITIALIZATION
+    // =========================================================================
+    window.onload = function() {
+      // 1. Render Lucide icons
+      if (window.lucide) {
+        lucide.createIcons();
+      }
+
+      // 2. Setup Canvas scale
+      resizeCanvas();
+
+      // 3. Initialize Chart.js objects
+      initCharts();
+
+      // 4. Trigger MathJax typeset
+      if (window.MathJax && window.MathJax.typesetPromise) {
+        window.MathJax.typesetPromise().catch(err => console.debug(err));
+      }
+
+      // 5. Start main physics animation interval (40ms => 25 FPS)
+      setInterval(updatePhysics, 40);
+    };
+  </script>
+</body>
+</html>
